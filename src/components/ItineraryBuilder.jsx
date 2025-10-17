@@ -938,121 +938,320 @@ const AnimatedCard = memo(({ icon: Icon, title, children, className = "", delay 
 
 AnimatedCard.displayName = 'AnimatedCard';
 
-const DayItinerary = memo(({ day, index, onRemove, onUpdate, onImageUpload, daysLength }) => (
-  <div className="bg-gradient-to-br from-white to-gray-50/80 rounded-3xl border-2 border-white/50 shadow-2xl shadow-black/5 p-6 mb-6 hover:shadow-3xl hover:shadow-[#5A11BF]/10 transition-all duration-500 group">
-    <div className="flex items-start justify-between mb-6">
-      <div className="flex items-center gap-4">
-        <div className="bg-gradient-to-r from-[#5A11BF] to-[#8B5CF6] text-white px-4 py-2 rounded-2xl font-bold text-lg shadow-lg">
-          Day {index + 1}
-        </div>
-        <div className="bg-[#5A11BF]/10 text-[#5A11BF] px-3 py-1 rounded-full text-sm font-semibold">
-          {new Date(day.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-        </div>
-      </div>
-      {daysLength > 1 && (
-        <button onClick={() => onRemove(day.id)} className="text-red-500 hover:text-red-700 transition-colors p-2 rounded-2xl hover:bg-red-50">
-          <Trash2 className="w-5 h-5" />
-        </button>
-      )}
-    </div>
+const FloatingBackground = () => (
+  <div className="fixed inset-0 -z-10 overflow-hidden">
+    <div className="absolute -top-40 -right-32 w-80 h-80 bg-[#5A11BF] rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-float"></div>
+    <div className="absolute -bottom-40 -left-32 w-80 h-80 bg-[#FF6B95] rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-float-delayed"></div>
+    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#4F46E5] rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow"></div>
+  </div>
+);
 
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 space-y-6">
-        <ModernInput 
-          label="Day Title" 
-          value={day.title} 
-          onChange={(value) => onUpdate(day.id, 'title', value)}
-          placeholder="Enter day title..."
-        />
-        
-        <div className="space-y-3">
-          <label className="block text-sm font-semibold text-gray-700">Activities Schedule</label>
-          <textarea 
-            value={day.activities}
-            onChange={(e) => onUpdate(day.id, 'activities', e.target.value)}
-            rows={6}
-            className="w-full px-4 py-4 bg-white/80 border-2 border-gray-200 rounded-2xl focus:border-[#5A11BF] focus:ring-4 focus:ring-[#5A11BF]/20 transition-all duration-300 backdrop-blur-sm font-medium resize-none"
-            placeholder="Morning:&#10;- Activity 1&#10;Afternoon:&#10;- Activity 2&#10;Evening:&#10;- Activity 3"
-          />
-        </div>
-      </div>
+const tabs = [
+  { id: 'overview', icon: Layout, label: 'Overview' },
+  { id: 'itinerary', icon: Calendar, label: 'Itinerary' },
+  { id: 'flights', icon: Plane, label: 'Flights' },
+  { id: 'hotels', icon: Hotel, label: 'Hotels' },
+  { id: 'activities', icon: MapPin, label: 'Activities' },
+  { id: 'payments', icon: CreditCard, label: 'Payments' },
+  { id: 'documents', icon: FileText, label: 'Documents' },
+];
 
-      <div className="space-y-6">
-        <ModernInput 
-          label="Date" 
-          type="date" 
-          value={day.date} 
-          onChange={(value) => onUpdate(day.id, 'date', value)}
-          icon={Calendar}
-        />
-        
-        <div className="text-center">
-          <label className="block text-sm font-semibold text-gray-700 mb-4">Day Image</label>
-          <label className="cursor-pointer group">
-            <div className={`border-2 border-dashed rounded-2xl p-6 transition-all duration-300 group-hover:border-[#5A11BF] group-hover:bg-[#5A11BF]/5 ${day.imagePreview ? 'border-green-200 bg-green-50' : 'border-gray-300'}`}>
-              {day.imagePreview ? (
-                <div className="relative">
-                  <img src={day.imagePreview} alt="Preview" className="w-full h-32 object-cover rounded-xl mb-3" />
-                  <div className="text-green-600 text-sm font-semibold">✓ Image Uploaded</div>
-                </div>
-              ) : (
-                <div className="text-gray-400 group-hover:text-[#5A11BF] transition-colors">
-                  <Upload className="w-8 h-8 mx-auto mb-2" />
-                  <div className="text-sm">Click to upload image</div>
-                </div>
-              )}
-              <input type="file" accept="image/*" onChange={(e) => onImageUpload(day.id, e)} className="hidden" />
-            </div>
-          </label>
-        </div>
-      </div>
-    </div>
+const NavigationTabs = memo(({ activeSection, onActiveSectionChange }) => (
+  <div className="flex overflow-x-auto py-4 gap-2 mb-8 scrollbar-hide">
+    {tabs.map(tab => (
+      <button
+        key={tab.id}
+        onClick={() => onActiveSectionChange(tab.id)}
+        className={`flex items-center gap-3 px-6 py-3 rounded-2xl font-semibold transition-all duration-300 whitespace-nowrap ${
+          activeSection === tab.id
+            ? 'bg-[#5A11BF] text-white shadow-lg shadow-[#5A11BF]/25 transform scale-105'
+            : 'bg-white/80 text-gray-600 hover:bg-white hover:text-[#5A11BF] backdrop-blur-sm border border-white/20'
+        }`}
+      >
+        <tab.icon className="w-5 h-5" />
+        {tab.label}
+      </button>
+    ))}
   </div>
 ));
+
+NavigationTabs.displayName = 'NavigationTabs';
+
+const TripOverview = memo(({
+  customerName,
+  departureCity,
+  arrivalCity,
+  departureDate,
+  returnDate,
+  travelers,
+  duration,
+  totalCost,
+  onCustomerNameChange,
+  onDepartureCityChange,
+  onArrivalCityChange,
+  onDepartureDateChange,
+  onReturnDateChange,
+}) => (
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+    <AnimatedCard icon={Globe} title="Destination" className="lg:col-span-2" delay={100}>
+      <div className="grid grid-cols-2 gap-6">
+        <div className="col-span-2">
+          <div className="bg-gradient-to-br from-[#5A11BF] to-[#8B5CF6] rounded-2xl p-1">
+            <div className="bg-white rounded-xl p-6">
+              <h3 className="text-2xl font-bold text-gray-800 mb-2">{arrivalCity}</h3>
+              <p className="text-gray-600">{duration} • {travelers} Travelers</p>
+            </div>
+          </div>
+        </div>
+        <ModernInput 
+          label="Departure City" 
+          value={departureCity} 
+          onChange={onDepartureCityChange} 
+          icon={MapPin} 
+        />
+        <ModernInput 
+          label="Destination City" 
+          value={arrivalCity} 
+          onChange={onArrivalCityChange} 
+          icon={Flag} 
+        />
+        <ModernInput 
+          label="Departure Date" 
+          type="date" 
+          value={departureDate} 
+          onChange={onDepartureDateChange} 
+          icon={Calendar}
+        />
+        <ModernInput 
+          label="Return Date" 
+          type="date" 
+          value={returnDate} 
+          onChange={onReturnDateChange} 
+          icon={Calendar}
+        />
+      </div>
+    </AnimatedCard>
+
+    <AnimatedCard icon={DollarSign} title="Cost Summary" delay={200}>
+      <div className="space-y-4">
+        <div className="text-center">
+          <div className="text-3xl font-bold text-[#5A11BF] mb-2">{totalCost}</div>
+          <div className="text-sm text-gray-600">Total Package Cost</div>
+        </div>
+        <div className="grid grid-cols-2 gap-4 text-center">
+          <div className="bg-gray-50 rounded-xl p-3">
+            <div className="text-lg font-bold text-gray-800">{travelers}</div>
+            <div className="text-xs text-gray-600">Travelers</div>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-3">
+            <div className="text-lg font-bold text-gray-800">{duration.split(' ')[0]} Days</div>
+            <div className="text-xs text-gray-600">Duration</div>
+          </div>
+        </div>
+        <ModernInput 
+          label="Customer Name" 
+          value={customerName} 
+          onChange={onCustomerNameChange} 
+          icon={User}
+        />
+      </div>
+    </AnimatedCard>
+  </div>
+));
+
+TripOverview.displayName = 'TripOverview';
+
+const DayItinerary = memo(({ day, index, onRemove, onUpdate, onImageUpload, daysLength }) => {
+  const handleTitleChange = useCallback((value) => onUpdate(day.id, 'title', value), [onUpdate, day.id]);
+  const handleActivitiesChange = useCallback((e) => onUpdate(day.id, 'activities', e.target.value), [onUpdate, day.id]);
+  const handleDateChange = useCallback((value) => onUpdate(day.id, 'date', value), [onUpdate, day.id]);
+
+  return (
+    <div className="bg-gradient-to-br from-white to-gray-50/80 rounded-3xl border-2 border-white/50 shadow-2xl shadow-black/5 p-6 mb-6 hover:shadow-3xl hover:shadow-[#5A11BF]/10 transition-all duration-500 group">
+      <div className="flex items-start justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <div className="bg-gradient-to-r from-[#5A11BF] to-[#8B5CF6] text-white px-4 py-2 rounded-2xl font-bold text-lg shadow-lg">
+            Day {index + 1}
+          </div>
+          <div className="bg-[#5A11BF]/10 text-[#5A11BF] px-3 py-1 rounded-full text-sm font-semibold">
+            {new Date(day.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </div>
+        </div>
+        {daysLength > 1 && (
+          <button onClick={() => onRemove(day.id)} className="text-red-500 hover:text-red-700 transition-colors p-2 rounded-2xl hover:bg-red-50">
+            <Trash2 className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <ModernInput 
+            label="Day Title" 
+            value={day.title} 
+            onChange={handleTitleChange}
+            placeholder="Enter day title..."
+          />
+          
+          <div className="space-y-3">
+            <label className="block text-sm font-semibold text-gray-700">Activities Schedule</label>
+            <textarea 
+              value={day.activities}
+              onChange={handleActivitiesChange}
+              rows={6}
+              className="w-full px-4 py-4 bg-white/80 border-2 border-gray-200 rounded-2xl focus:border-[#5A11BF] focus:ring-4 focus:ring-[#5A11BF]/20 transition-all duration-300 backdrop-blur-sm font-medium resize-none"
+              placeholder="Morning:&#10;- Activity 1&#10;Afternoon:&#10;- Activity 2&#10;Evening:&#10;- Activity 3"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <ModernInput 
+            label="Date" 
+            type="date" 
+            value={day.date} 
+            onChange={handleDateChange}
+            icon={Calendar}
+          />
+          
+          <div className="text-center">
+            <label className="block text-sm font-semibold text-gray-700 mb-4">Day Image</label>
+            <label className="cursor-pointer group">
+              <div className={`border-2 border-dashed rounded-2xl p-6 transition-all duration-300 group-hover:border-[#5A11BF] group-hover:bg-[#5A11BF]/5 ${day.imagePreview ? 'border-green-200 bg-green-50' : 'border-gray-300'}`}>
+                {day.imagePreview ? (
+                  <div className="relative">
+                    <img src={day.imagePreview} alt="Preview" className="w-full h-32 object-cover rounded-xl mb-3" />
+                    <div className="text-green-600 text-sm font-semibold">✓ Image Uploaded</div>
+                  </div>
+                ) : (
+                  <div className="text-gray-400 group-hover:text-[#5A11BF] transition-colors">
+                    <Upload className="w-8 h-8 mx-auto mb-2" />
+                    <div className="text-sm">Click to upload image</div>
+                  </div>
+                )}
+                <input type="file" accept="image/*" onChange={(e) => onImageUpload(day.id, e)} className="hidden" />
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 DayItinerary.displayName = 'DayItinerary';
 
-const FlightCard = memo(({ flight, onRemove, onUpdate }) => (
-  <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-6 border-2 border-white/50 mb-4">
-    <div className="flex justify-between items-start mb-4">
-      <h4 className="font-bold text-gray-800 text-lg">{flight.airline}</h4>
-      <button onClick={() => onRemove(flight.id)} className="text-red-500 hover:text-red-700 transition-colors p-2 rounded-xl hover:bg-red-50">
-        <Trash2 className="w-4 h-4" />
-      </button>
+const FlightCard = memo(({ flight, onRemove, onUpdate }) => {
+  const handleDateChange = useCallback((value) => onUpdate(flight.id, 'date', value), [onUpdate, flight.id]);
+  const handleAirlineChange = useCallback((value) => onUpdate(flight.id, 'airline', value), [onUpdate, flight.id]);
+  const handleFromChange = useCallback((value) => onUpdate(flight.id, 'from', value), [onUpdate, flight.id]);
+  const handleToChange = useCallback((value) => onUpdate(flight.id, 'to', value), [onUpdate, flight.id]);
+  const handleDepartureTimeChange = useCallback((value) => onUpdate(flight.id, 'departureTime', value), [onUpdate, flight.id]);
+  const handleArrivalTimeChange = useCallback((value) => onUpdate(flight.id, 'arrivalTime', value), [onUpdate, flight.id]);
+
+  return (
+    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-6 border-2 border-white/50 mb-4">
+      <div className="flex justify-between items-start mb-4">
+        <h4 className="font-bold text-gray-800 text-lg">{flight.airline}</h4>
+        <button onClick={() => onRemove(flight.id)} className="text-red-500 hover:text-red-700 transition-colors p-2 rounded-xl hover:bg-red-50">
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <ModernInput label="Date" type="date" value={flight.date} onChange={handleDateChange} />
+        <ModernInput label="Airline" value={flight.airline} onChange={handleAirlineChange} />
+        <ModernInput label="From" value={flight.from} onChange={handleFromChange} placeholder="BOM" />
+        <ModernInput label="To" value={flight.to} onChange={handleToChange} placeholder="SIN" />
+        <ModernInput label="Departure" type="time" value={flight.departureTime} onChange={handleDepartureTimeChange} />
+        <ModernInput label="Arrival" type="time" value={flight.arrivalTime} onChange={handleArrivalTimeChange} />
+      </div>
     </div>
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <ModernInput label="Date" type="date" value={flight.date} onChange={(value) => onUpdate(flight.id, 'date', value)} />
-      <ModernInput label="Airline" value={flight.airline} onChange={(value) => onUpdate(flight.id, 'airline', value)} />
-      <ModernInput label="From" value={flight.from} onChange={(value) => onUpdate(flight.id, 'from', value)} placeholder="BOM" />
-      <ModernInput label="To" value={flight.to} onChange={(value) => onUpdate(flight.id, 'to', value)} placeholder="SIN" />
-      <ModernInput label="Departure" type="time" value={flight.departureTime} onChange={(value) => onUpdate(flight.id, 'departureTime', value)} />
-      <ModernInput label="Arrival" type="time" value={flight.arrivalTime} onChange={(value) => onUpdate(flight.id, 'arrivalTime', value)} />
-    </div>
-  </div>
-));
+  );
+});
 
 FlightCard.displayName = 'FlightCard';
 
-const HotelCard = memo(({ hotel, onRemove, onUpdate }) => (
-  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-white/50 mb-4">
-    <div className="flex justify-between items-start mb-4">
-      <h4 className="font-bold text-gray-800 text-lg">{hotel.name}</h4>
-      <button onClick={() => onRemove(hotel.id)} className="text-red-500 hover:text-red-700 transition-colors p-2 rounded-xl hover:bg-red-50">
-        <Trash2 className="w-4 h-4" />
-      </button>
+const HotelCard = memo(({ hotel, onRemove, onUpdate }) => {
+  const handleNameChange = useCallback((value) => onUpdate(hotel.id, 'name', value), [onUpdate, hotel.id]);
+  const handleCityChange = useCallback((value) => onUpdate(hotel.id, 'city', value), [onUpdate, hotel.id]);
+  const handleRoomTypeChange = useCallback((value) => onUpdate(hotel.id, 'roomType', value), [onUpdate, hotel.id]);
+  const handleCheckInChange = useCallback((value) => onUpdate(hotel.id, 'checkIn', value), [onUpdate, hotel.id]);
+  const handleCheckOutChange = useCallback((value) => onUpdate(hotel.id, 'checkOut', value), [onUpdate, hotel.id]);
+  const handleNightsChange = useCallback((value) => onUpdate(hotel.id, 'nights', value), [onUpdate, hotel.id]);
+
+  return (
+    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-white/50 mb-4">
+      <div className="flex justify-between items-start mb-4">
+        <h4 className="font-bold text-gray-800 text-lg">{hotel.name}</h4>
+        <button onClick={() => onRemove(hotel.id)} className="text-red-500 hover:text-red-700 transition-colors p-2 rounded-xl hover:bg-red-50">
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <ModernInput label="Hotel Name" value={hotel.name} onChange={handleNameChange} />
+        <ModernInput label="City" value={hotel.city} onChange={handleCityChange} />
+        <ModernInput label="Room Type" value={hotel.roomType} onChange={handleRoomTypeChange} />
+        <ModernInput label="Check In" type="date" value={hotel.checkIn} onChange={handleCheckInChange} />
+        <ModernInput label="Check Out" type="date" value={hotel.checkOut} onChange={handleCheckOutChange} />
+        <ModernInput label="Nights" type="number" value={hotel.nights} onChange={handleNightsChange} />
+      </div>
     </div>
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-      <ModernInput label="Hotel Name" value={hotel.name} onChange={(value) => onUpdate(hotel.id, 'name', value)} />
-      <ModernInput label="City" value={hotel.city} onChange={(value) => onUpdate(hotel.id, 'city', value)} />
-      <ModernInput label="Room Type" value={hotel.roomType} onChange={(value) => onUpdate(hotel.id, 'roomType', value)} />
-      <ModernInput label="Check In" type="date" value={hotel.checkIn} onChange={(value) => onUpdate(hotel.id, 'checkIn', value)} />
-      <ModernInput label="Check Out" type="date" value={hotel.checkOut} onChange={(value) => onUpdate(hotel.id, 'checkOut', value)} />
-      <ModernInput label="Nights" type="number" value={hotel.nights} onChange={(value) => onUpdate(hotel.id, 'nights', value)} />
-    </div>
-  </div>
-));
+  );
+});
 
 HotelCard.displayName = 'HotelCard';
+
+const ActivityCard = memo(({ activity, onRemove, onUpdate }) => {
+  const handleCityChange = useCallback((value) => onUpdate(activity.id, 'city', value), [onUpdate, activity.id]);
+  const handleActivityChange = useCallback((value) => onUpdate(activity.id, 'activity', value), [onUpdate, activity.id]);
+  const handleTypeChange = useCallback((value) => onUpdate(activity.id, 'type', value), [onUpdate, activity.id]);
+  const handleTimeRequiredChange = useCallback((value) => onUpdate(activity.id, 'timeRequired', value), [onUpdate, activity.id]);
+
+  return (
+    <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-6 border-2 border-white/50">
+      <div className="flex justify-between items-start mb-4">
+        <h4 className="font-bold text-gray-800">Activity #{activity.id}</h4>
+        <button onClick={() => onRemove(activity.id)} className="text-red-500 hover:text-red-700">
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <ModernInput label="City" value={activity.city} onChange={handleCityChange} />
+        <ModernInput label="Activity" value={activity.activity} onChange={handleActivityChange} />
+        <ModernInput label="Type" value={activity.type} onChange={handleTypeChange} />
+        <ModernInput label="Duration" value={activity.timeRequired} onChange={handleTimeRequiredChange} />
+      </div>
+    </div>
+  );
+});
+
+ActivityCard.displayName = 'ActivityCard';
+
+const PaymentCard = memo(({ payment, onRemove, onUpdate }) => {
+  const handleInstallmentChange = useCallback((value) => onUpdate(payment.id, 'installment', value), [onUpdate, payment.id]);
+  const handleAmountChange = useCallback((value) => onUpdate(payment.id, 'amount', value), [onUpdate, payment.id]);
+  const handleDueDateChange = useCallback((value) => onUpdate(payment.id, 'dueDate', value), [onUpdate, payment.id]);
+  const handleStatusChange = useCallback((value) => onUpdate(payment.id, 'status', value), [onUpdate, payment.id]);
+
+  return (
+    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border-2 border-white/50">
+      <div className="flex justify-between items-start mb-4">
+        <h4 className="font-bold text-gray-800">{payment.installment}</h4>
+        <button onClick={() => onRemove(payment.id)} className="text-red-500 hover:text-red-700">
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <ModernInput label="Installment" value={payment.installment} onChange={handleInstallmentChange} />
+        <ModernInput label="Amount" value={payment.amount} onChange={handleAmountChange} />
+        <ModernInput label="Due Date" type="date" value={payment.dueDate} onChange={handleDueDateChange} />
+        <ModernInput label="Status" value={payment.status} onChange={handleStatusChange} />
+      </div>
+    </div>
+  );
+});
+
+PaymentCard.displayName = 'PaymentCard';
 
 export default function ItineraryBuilder() {
   const [formData, setFormData] = useState({
@@ -1095,6 +1294,12 @@ export default function ItineraryBuilder() {
   const updateFormData = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
+
+  const onCustomerNameChange = useCallback((value) => updateFormData('customerName', value), [updateFormData]);
+  const onDepartureCityChange = useCallback((value) => updateFormData('departureCity', value), [updateFormData]);
+  const onArrivalCityChange = useCallback((value) => updateFormData('arrivalCity', value), [updateFormData]);
+  const onDepartureDateChange = useCallback((value) => updateFormData('departureDate', value), [updateFormData]);
+  const onReturnDateChange = useCallback((value) => updateFormData('returnDate', value), [updateFormData]);
 
   const addDay = useCallback(() => {
     setDays(prev => [...prev, { 
@@ -1277,109 +1482,6 @@ export default function ItineraryBuilder() {
     }
   }, [formData, days, flights, hotels, importantNotes, scopeServices, inclusionSummary, activities, payments, visaDetails]);
 
-  const FloatingBackground = useCallback(() => (
-    <div className="fixed inset-0 -z-10 overflow-hidden">
-      <div className="absolute -top-40 -right-32 w-80 h-80 bg-[#5A11BF] rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-float"></div>
-      <div className="absolute -bottom-40 -left-32 w-80 h-80 bg-[#FF6B95] rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-float-delayed"></div>
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#4F46E5] rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow"></div>
-    </div>
-  ), []);
-
-  const NavigationTabs = useCallback(() => (
-    <div className="flex overflow-x-auto py-4 gap-2 mb-8 scrollbar-hide">
-      {[
-        { id: 'overview', icon: Layout, label: 'Overview' },
-        { id: 'itinerary', icon: Calendar, label: 'Itinerary' },
-        { id: 'flights', icon: Plane, label: 'Flights' },
-        { id: 'hotels', icon: Hotel, label: 'Hotels' },
-        { id: 'activities', icon: MapPin, label: 'Activities' },
-        { id: 'payments', icon: CreditCard, label: 'Payments' },
-        { id: 'documents', icon: FileText, label: 'Documents' },
-      ].map(tab => (
-        <button
-          key={tab.id}
-          onClick={() => setActiveSection(tab.id)}
-          className={`flex items-center gap-3 px-6 py-3 rounded-2xl font-semibold transition-all duration-300 whitespace-nowrap ${
-            activeSection === tab.id
-              ? 'bg-[#5A11BF] text-white shadow-lg shadow-[#5A11BF]/25 transform scale-105'
-              : 'bg-white/80 text-gray-600 hover:bg-white hover:text-[#5A11BF] backdrop-blur-sm border border-white/20'
-          }`}
-        >
-          <tab.icon className="w-5 h-5" />
-          {tab.label}
-        </button>
-      ))}
-    </div>
-  ), [activeSection]);
-
-  const TripOverview = useCallback(() => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-      <AnimatedCard icon={Globe} title="Destination" className="lg:col-span-2" delay={100}>
-        <div className="grid grid-cols-2 gap-6">
-          <div className="col-span-2">
-            <div className="bg-gradient-to-br from-[#5A11BF] to-[#8B5CF6] rounded-2xl p-1">
-              <div className="bg-white rounded-xl p-6">
-                <h3 className="text-2xl font-bold text-gray-800 mb-2">{formData.arrivalCity}</h3>
-                <p className="text-gray-600">{formData.duration} • {formData.travelers} Travelers</p>
-              </div>
-            </div>
-          </div>
-          <ModernInput 
-            label="Departure City" 
-            value={formData.departureCity} 
-            onChange={(value) => updateFormData('departureCity', value)} 
-            icon={MapPin} 
-          />
-          <ModernInput 
-            label="Destination City" 
-            value={formData.arrivalCity} 
-            onChange={(value) => updateFormData('arrivalCity', value)} 
-            icon={Flag} 
-          />
-          <ModernInput 
-            label="Departure Date" 
-            type="date" 
-            value={formData.departureDate} 
-            onChange={(value) => updateFormData('departureDate', value)} 
-            icon={Calendar}
-          />
-          <ModernInput 
-            label="Return Date" 
-            type="date" 
-            value={formData.returnDate} 
-            onChange={(value) => updateFormData('returnDate', value)} 
-            icon={Calendar}
-          />
-        </div>
-      </AnimatedCard>
-
-      <AnimatedCard icon={DollarSign} title="Cost Summary" delay={200}>
-        <div className="space-y-4">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-[#5A11BF] mb-2">{formData.totalCost}</div>
-            <div className="text-sm text-gray-600">Total Package Cost</div>
-          </div>
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div className="bg-gray-50 rounded-xl p-3">
-              <div className="text-lg font-bold text-gray-800">{formData.travelers}</div>
-              <div className="text-xs text-gray-600">Travelers</div>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-3">
-              <div className="text-lg font-bold text-gray-800">{formData.duration.split(' ')[0]} Days</div>
-              <div className="text-xs text-gray-600">Duration</div>
-            </div>
-          </div>
-          <ModernInput 
-            label="Customer Name" 
-            value={formData.customerName} 
-            onChange={(value) => updateFormData('customerName', value)} 
-            icon={User}
-          />
-        </div>
-      </AnimatedCard>
-    </div>
-  ), [formData, updateFormData]);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 relative overflow-hidden">
       <FloatingBackground />
@@ -1395,10 +1497,24 @@ export default function ItineraryBuilder() {
         </div>
 
         <div className="max-w-7xl mx-auto px-4">
-          <NavigationTabs />
+          <NavigationTabs activeSection={activeSection} onActiveSectionChange={setActiveSection} />
           
           <div className="space-y-8">
-            <TripOverview />
+            <TripOverview
+              customerName={formData.customerName}
+              departureCity={formData.departureCity}
+              arrivalCity={formData.arrivalCity}
+              departureDate={formData.departureDate}
+              returnDate={formData.returnDate}
+              travelers={formData.travelers}
+              duration={formData.duration}
+              totalCost={formData.totalCost}
+              onCustomerNameChange={onCustomerNameChange}
+              onDepartureCityChange={onDepartureCityChange}
+              onArrivalCityChange={onArrivalCityChange}
+              onDepartureDateChange={onDepartureDateChange}
+              onReturnDateChange={onReturnDateChange}
+            />
 
             <AnimatedCard icon={Calendar} title="Daily Itinerary" delay={300}>
               <div className="space-y-6">
@@ -1456,20 +1572,12 @@ export default function ItineraryBuilder() {
             <AnimatedCard icon={MapPin} title="Activities & Experiences" delay={600}>
               <div className="space-y-6">
                 {activities.map((activity) => (
-                  <div key={activity.id} className="bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-6 border-2 border-white/50">
-                    <div className="flex justify-between items-start mb-4">
-                      <h4 className="font-bold text-gray-800">Activity #{activity.id}</h4>
-                      <button onClick={() => removeActivity(activity.id)} className="text-red-500 hover:text-red-700">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <ModernInput label="City" value={activity.city} onChange={(value) => updateActivity(activity.id, 'city', value)} />
-                      <ModernInput label="Activity" value={activity.activity} onChange={(value) => updateActivity(activity.id, 'activity', value)} />
-                      <ModernInput label="Type" value={activity.type} onChange={(value) => updateActivity(activity.id, 'type', value)} />
-                      <ModernInput label="Duration" value={activity.timeRequired} onChange={(value) => updateActivity(activity.id, 'timeRequired', value)} />
-                    </div>
-                  </div>
+                  <ActivityCard 
+                    key={activity.id} 
+                    activity={activity} 
+                    onRemove={removeActivity}
+                    onUpdate={updateActivity}
+                  />
                 ))}
                 <GlassButton onClick={addActivity} variant="secondary" icon={Plus} className="w-full justify-center">
                   Add Activity
@@ -1480,20 +1588,12 @@ export default function ItineraryBuilder() {
             <AnimatedCard icon={CreditCard} title="Payment Schedule" delay={700}>
               <div className="space-y-6">
                 {payments.map((payment) => (
-                  <div key={payment.id} className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border-2 border-white/50">
-                    <div className="flex justify-between items-start mb-4">
-                      <h4 className="font-bold text-gray-800">{payment.installment}</h4>
-                      <button onClick={() => removePayment(payment.id)} className="text-red-500 hover:text-red-700">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <ModernInput label="Installment" value={payment.installment} onChange={(value) => updatePayment(payment.id, 'installment', value)} />
-                      <ModernInput label="Amount" value={payment.amount} onChange={(value) => updatePayment(payment.id, 'amount', value)} />
-                      <ModernInput label="Due Date" type="date" value={payment.dueDate} onChange={(value) => updatePayment(payment.id, 'dueDate', value)} />
-                      <ModernInput label="Status" value={payment.status} onChange={(value) => updatePayment(payment.id, 'status', value)} />
-                    </div>
-                  </div>
+                  <PaymentCard 
+                    key={payment.id} 
+                    payment={payment} 
+                    onRemove={removePayment}
+                    onUpdate={updatePayment}
+                  />
                 ))}
                 <GlassButton onClick={addPayment} variant="secondary" icon={Plus} className="w-full justify-center">
                   Add Payment
