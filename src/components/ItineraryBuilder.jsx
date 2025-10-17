@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, memo } from "react";
 import {
   FileText,
   Plus,
@@ -15,7 +15,6 @@ import {
   Globe,
   Flag,
   DollarSign,
-
   File,
   CheckCircle,
   AlertCircle,
@@ -34,12 +33,8 @@ import {
 } from "@react-pdf/renderer";
 import { motion } from "framer-motion";
 
-// IMPORTANT: Make sure this path points to your logo file.
 import logo from "../assets/images/vigovia.png";
 
-// =================================================================================
-// STYLESHEET - MERGED AND FINALIZED (FIXED TABLE STYLES - CARD-COLUMN SEPARATED)
-// =================================================================================
 const TABLE_HEADER_BG = "#5A11BF";
 const TABLE_CELL_BG = "#FBF7FF";
 const TABLE_BORDER_COLOR = "#E9D5FF";
@@ -57,7 +52,6 @@ const pdfStyles = StyleSheet.create({
   sectionSpacing: {
     marginBottom: 25,
   },
-  // --- NEW HEADER (Logo Only) ---
   pageHeader: {
     alignItems: "center",
     marginBottom: 20,
@@ -66,14 +60,13 @@ const pdfStyles = StyleSheet.create({
     width: 130,
     height: "auto",
   },
-  // --- MAIN BANNER (FIXED: Solid background for visibility) ---
   mainBanner: {
     borderRadius: 12,
     paddingVertical: 20,
     paddingHorizontal: 30,
     alignItems: "center",
     marginBottom: 25,
-    backgroundColor: "#5A11BF", // Solid purple background ensures visibility
+    backgroundColor: "#5A11BF",
     position: "relative",
     zIndex: 1,
   },
@@ -98,7 +91,6 @@ const pdfStyles = StyleSheet.create({
   bannerIcons: { flexDirection: "row", gap: 15, marginTop: 5 },
   bannerIcon: { position: "relative", zIndex: 2 },
 
-  // --- TRIP DETAILS BAR ---
   tripDetailsSection: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -123,7 +115,6 @@ const pdfStyles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
   },
 
-  // --- SECTION TITLE (Fixed to highlight second word) ---
   sectionTitleContainer: {
     marginBottom: 15,
     flexDirection: "row",
@@ -132,15 +123,14 @@ const pdfStyles = StyleSheet.create({
   sectionTitleHighlight: {
     fontSize: 14,
     fontFamily: "Helvetica-Bold",
-    color: "#111827", // Black
+    color: "#111827",
   },
   sectionTitle: {
     fontSize: 14,
     fontFamily: "Helvetica-Bold",
-    color: "#5A11BF", // Purple
+    color: "#5A11BF",
   },
 
-  // --- NEW DAY BY DAY LAYOUT (UPDATED TIMELINE WITH CONNECTING LINE THROUGH DOTS) ---
   daySectionContainer: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -184,23 +174,22 @@ const pdfStyles = StyleSheet.create({
   },
   dayActivitiesColumn: {
     flex: 1,
-    position: "relative", // For absolute timeline line
+    position: "relative",
     paddingTop: 5,
     paddingLeft: 10,
   },
-  // Timeline vertical line running through the column
   timelineLine: {
     position: "absolute",
-    left: 4, // Position where dots will overlap
+    left: 4,
     top: 0,
     bottom: 0,
     width: 1.5,
-    backgroundColor: "#7C3AED", // Purple line
+    backgroundColor: "#7C3AED",
   },
   activityRow: { 
     position: "relative", 
     marginBottom: 15,
-    paddingLeft: 10, // Space for dot + line
+    paddingLeft: 10,
   },
   activityDot: {
     width: 8,
@@ -208,7 +197,7 @@ const pdfStyles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "#7C3AED",
     position: "absolute",
-    left: -1.5, // Overlap the line
+    left: -1.5,
     top: 4,
   },
   activityTime: {
@@ -216,17 +205,16 @@ const pdfStyles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     color: "#374151",
     marginBottom: 4,
-    marginLeft: 10, // Indent from dot
+    marginLeft: 10,
   },
   activityDescription: {
     fontSize: 9,
     color: "#4B5563",
     lineHeight: 1.4,
     marginBottom: 2,
-    marginLeft: 10, // Align with time
+    marginLeft: 10,
   },
 
-  // --- FLIGHT SUMMARY (UPDATED TO MATCH DESIRED STRUCTURE) ---
   flightBox: {
     flexDirection: "row",
     backgroundColor: "#F3E8FF",
@@ -262,7 +250,6 @@ const pdfStyles = StyleSheet.create({
     lineHeight: 1.4,
   },
 
-  // --- UPDATED PAYMENT SUMMARY (SIMILAR TO FLIGHT STRUCTURE) ---
   paymentSummaryContainer: { flexDirection: "row", marginBottom: 15, gap: 15 },
   paymentSummaryBox: {
     flex: 1,
@@ -283,7 +270,6 @@ const pdfStyles = StyleSheet.create({
     color: "#111827",
     fontFamily: "Helvetica-Bold",
   },
-  // New: Payment installment boxes similar to flights
   paymentInstallmentBox: {
     flexDirection: "row",
     backgroundColor: "#F3E8FF",
@@ -307,7 +293,6 @@ const pdfStyles = StyleSheet.create({
     color: "#374151",
   },
 
-  // --- NEW CARD-COLUMN TABLE STYLES ---
   customTableContainer: {
     width: "100%",
     marginBottom: 25,
@@ -340,7 +325,6 @@ const pdfStyles = StyleSheet.create({
     borderColor: TABLE_BORDER_COLOR,
   },
 
-  // --- HOTEL NOTES ---
   hotelNotes: { marginTop: 5, marginBottom: 20 },
   hotelNoteItem: {
     fontSize: 8,
@@ -349,7 +333,6 @@ const pdfStyles = StyleSheet.create({
     marginBottom: 2,
   },
 
-  // --- CTA BUTTON ---
   planPackGoContainer: {
     backgroundColor: "#5A11BF",
     borderRadius: 25,
@@ -365,7 +348,6 @@ const pdfStyles = StyleSheet.create({
     color: "#FFFFFF",
   },
 
-  // --- FOOTER STYLES ---
   footer: {
     position: "absolute",
     bottom: 20,
@@ -412,10 +394,6 @@ const pdfStyles = StyleSheet.create({
 const ICON_SIZE = 28;
 const ICON_FILL = "#FFFFFF";
 
-// =================================================================================
-// HELPER COMPONENTS
-// =================================================================================
-
 const SectionTitleWithHighlight = ({ children, style = {} }) => {
   const title = children.toString().trim();
   const words = title.split(/\s+/).filter(Boolean);
@@ -449,7 +427,6 @@ const SectionTitleWithHighlight = ({ children, style = {} }) => {
   );
 };
 
-// Component to handle the custom table look
 const CustomTable = ({ data, columns }) => {
   if (!data || data.length === 0) return null;
 
@@ -481,9 +458,6 @@ const CustomTable = ({ data, columns }) => {
   );
 };
 
-// =================================================================================
-// FOOTER COMPONENT
-// =================================================================================
 const Footer = () => (
   <View style={pdfStyles.footer} fixed>
     <View style={pdfStyles.footerLeft}>
@@ -502,9 +476,6 @@ const Footer = () => (
   </View>
 );
 
-// =================================================================================
-// MyDocument COMPONENT - UPDATED FOR NEW STRUCTURES
-// =================================================================================
 const MyDocument = ({
   formData,
   days,
@@ -553,7 +524,6 @@ const MyDocument = ({
     return sections;
   };
 
-  // Table Column Definitions
   const hotelColumns = [
     { key: "city", header: "City", flex: 1.5 },
     { key: "checkIn", header: "Check In", flex: 1 },
@@ -603,7 +573,6 @@ const MyDocument = ({
 
   return (
     <Document>
-      {/* ======================= PAGE 1: Itinerary Overview ======================= */}
       <Page size="A4" style={pdfStyles.page}>
         <View style={pdfStyles.pageHeader}>
           <Image style={pdfStyles.headerLogo} src={logo} />
@@ -678,7 +647,6 @@ const MyDocument = ({
           </View>
         </View>
 
-        {/* Show only first day on page 1 to prevent overflow */}
         <SectionTitleWithHighlight>Daily Itinerary</SectionTitleWithHighlight>
         <View>
           {days.slice(0, 1).map((day, index) => {
@@ -733,7 +701,6 @@ const MyDocument = ({
         <Footer />
       </Page>
 
-      {/* ======================= PAGE 2: Remaining Days ======================= */}
       <Page size="A4" style={pdfStyles.page}>
         <SectionTitleWithHighlight>Daily Itinerary (Continued)</SectionTitleWithHighlight>
         <View>
@@ -789,7 +756,6 @@ const MyDocument = ({
         <Footer />
       </Page>
 
-      {/* ======================= PAGE 3: Flights & Hotels ======================= */}
       <Page size="A4" style={pdfStyles.page}>
         <SectionTitleWithHighlight>Flight Summary</SectionTitleWithHighlight>
         {flights.map((flight) => (
@@ -828,7 +794,6 @@ const MyDocument = ({
         <Footer />
       </Page>
 
-      {/* ======================= PAGE 4: Notes & Inclusions ======================= */}
       <Page size="A4" style={pdfStyles.page}>
         <SectionTitleWithHighlight>Important Notes</SectionTitleWithHighlight>
         <CustomTable data={importantNotes} columns={importantNotesColumns} />
@@ -849,7 +814,6 @@ const MyDocument = ({
         <Footer />
       </Page>
 
-      {/* ======================= PAGE 5: Activities & Payment ======================= */}
       <Page size="A4" style={pdfStyles.page}>
         <SectionTitleWithHighlight>Activity Table</SectionTitleWithHighlight>
         <CustomTable data={activities} columns={activitiesColumns} />
@@ -897,152 +861,270 @@ const MyDocument = ({
       </Page>
     </Document>
   );
-};// =================================================================================
-// ItineraryBuilder COMPONENT (RESTRUCTURED TO PREMIUM BOOKING WEBSITE STYLE WITH ANIMATIONS)
-// =================================================================================
+};
 
+const ModernInput = memo(({ label, type = "text", value, onChange, placeholder, icon: Icon }) => {
+  const handleChange = useCallback((e) => {
+    onChange(e.target.value);
+  }, [onChange]);
+
+  return (
+    <div className="group space-y-3">
+      <label className="block text-sm font-semibold text-gray-700 tracking-wide">{label}</label>
+      <div className="relative">
+        {Icon && (
+          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#5A11BF] group-focus-within:text-[#8B5CF6] transition-colors">
+            <Icon className="w-5 h-5" />
+          </div>
+        )}
+        <input
+          type={type}
+          value={value}
+          onChange={handleChange}
+          placeholder={placeholder}
+          className={`w-full px-4 py-4 ${Icon ? 'pl-12' : 'pl-4'} bg-white/80 border-2 border-gray-200 rounded-2xl focus:border-[#5A11BF] focus:ring-4 focus:ring-[#5A11BF]/20 transition-all duration-300 backdrop-blur-sm font-medium`}
+        />
+      </div>
+    </div>
+  );
+});
+
+ModernInput.displayName = 'ModernInput';
+
+const GlassButton = memo(({ onClick, children, variant = "primary", className = "", icon: Icon }) => {
+  const handleClick = useCallback((e) => {
+    e.preventDefault();
+    onClick();
+  }, [onClick]);
+
+  return (
+    <button
+      onClick={handleClick}
+      className={`
+        group relative overflow-hidden px-6 py-4 rounded-2xl font-semibold transition-all duration-500 flex items-center gap-3
+        ${variant === 'primary' 
+          ? 'bg-gradient-to-r from-[#5A11BF] to-[#8B5CF6] text-white shadow-2xl shadow-[#5A11BF]/25 hover:shadow-3xl hover:shadow-[#5A11BF]/40 hover:scale-105' 
+          : 'bg-white/80 text-[#5A11BF] border-2 border-[#5A11BF]/20 hover:bg-[#5A11BF] hover:text-white hover:border-[#5A11BF] backdrop-blur-sm'
+        } ${className}
+      `}
+    >
+      {Icon && <Icon className="w-5 h-5 transition-transform group-hover:scale-110" />}
+      {children}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 transform translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
+    </button>
+  );
+});
+
+GlassButton.displayName = 'GlassButton';
+
+const AnimatedCard = memo(({ icon: Icon, title, children, className = "", delay = 0 }) => (
+  <div 
+    className={`bg-white/80 backdrop-blur-lg rounded-3xl border border-white/20 shadow-2xl shadow-black/5 overflow-hidden hover:shadow-3xl hover:shadow-[#5A11BF]/10 transition-all duration-500 hover:-translate-y-2 ${className}`}
+    style={{ animationDelay: `${delay}ms` }}
+  >
+    <div className="bg-gradient-to-r from-[#5A11BF] to-[#8B5CF6] p-6">
+      <div className="flex items-center gap-4">
+        <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-sm">
+          <Icon className="w-7 h-7 text-white" />
+        </div>
+        <h2 className="text-2xl font-bold text-white">{title}</h2>
+      </div>
+    </div>
+    <div className="p-6 bg-white/50 backdrop-blur-sm">
+      {children}
+    </div>
+  </div>
+));
+
+AnimatedCard.displayName = 'AnimatedCard';
+
+const DayItinerary = memo(({ day, index, onRemove, onUpdate, onImageUpload, daysLength }) => (
+  <div className="bg-gradient-to-br from-white to-gray-50/80 rounded-3xl border-2 border-white/50 shadow-2xl shadow-black/5 p-6 mb-6 hover:shadow-3xl hover:shadow-[#5A11BF]/10 transition-all duration-500 group">
+    <div className="flex items-start justify-between mb-6">
+      <div className="flex items-center gap-4">
+        <div className="bg-gradient-to-r from-[#5A11BF] to-[#8B5CF6] text-white px-4 py-2 rounded-2xl font-bold text-lg shadow-lg">
+          Day {index + 1}
+        </div>
+        <div className="bg-[#5A11BF]/10 text-[#5A11BF] px-3 py-1 rounded-full text-sm font-semibold">
+          {new Date(day.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        </div>
+      </div>
+      {daysLength > 1 && (
+        <button onClick={() => onRemove(day.id)} className="text-red-500 hover:text-red-700 transition-colors p-2 rounded-2xl hover:bg-red-50">
+          <Trash2 className="w-5 h-5" />
+        </button>
+      )}
+    </div>
+
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 space-y-6">
+        <ModernInput 
+          label="Day Title" 
+          value={day.title} 
+          onChange={(value) => onUpdate(day.id, 'title', value)}
+          placeholder="Enter day title..."
+        />
+        
+        <div className="space-y-3">
+          <label className="block text-sm font-semibold text-gray-700">Activities Schedule</label>
+          <textarea 
+            value={day.activities}
+            onChange={(e) => onUpdate(day.id, 'activities', e.target.value)}
+            rows={6}
+            className="w-full px-4 py-4 bg-white/80 border-2 border-gray-200 rounded-2xl focus:border-[#5A11BF] focus:ring-4 focus:ring-[#5A11BF]/20 transition-all duration-300 backdrop-blur-sm font-medium resize-none"
+            placeholder="Morning:&#10;- Activity 1&#10;Afternoon:&#10;- Activity 2&#10;Evening:&#10;- Activity 3"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <ModernInput 
+          label="Date" 
+          type="date" 
+          value={day.date} 
+          onChange={(value) => onUpdate(day.id, 'date', value)}
+          icon={Calendar}
+        />
+        
+        <div className="text-center">
+          <label className="block text-sm font-semibold text-gray-700 mb-4">Day Image</label>
+          <label className="cursor-pointer group">
+            <div className={`border-2 border-dashed rounded-2xl p-6 transition-all duration-300 group-hover:border-[#5A11BF] group-hover:bg-[#5A11BF]/5 ${day.imagePreview ? 'border-green-200 bg-green-50' : 'border-gray-300'}`}>
+              {day.imagePreview ? (
+                <div className="relative">
+                  <img src={day.imagePreview} alt="Preview" className="w-full h-32 object-cover rounded-xl mb-3" />
+                  <div className="text-green-600 text-sm font-semibold">✓ Image Uploaded</div>
+                </div>
+              ) : (
+                <div className="text-gray-400 group-hover:text-[#5A11BF] transition-colors">
+                  <Upload className="w-8 h-8 mx-auto mb-2" />
+                  <div className="text-sm">Click to upload image</div>
+                </div>
+              )}
+              <input type="file" accept="image/*" onChange={(e) => onImageUpload(day.id, e)} className="hidden" />
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+));
+
+DayItinerary.displayName = 'DayItinerary';
+
+const FlightCard = memo(({ flight, onRemove, onUpdate }) => (
+  <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-6 border-2 border-white/50 mb-4">
+    <div className="flex justify-between items-start mb-4">
+      <h4 className="font-bold text-gray-800 text-lg">{flight.airline}</h4>
+      <button onClick={() => onRemove(flight.id)} className="text-red-500 hover:text-red-700 transition-colors p-2 rounded-xl hover:bg-red-50">
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <ModernInput label="Date" type="date" value={flight.date} onChange={(value) => onUpdate(flight.id, 'date', value)} />
+      <ModernInput label="Airline" value={flight.airline} onChange={(value) => onUpdate(flight.id, 'airline', value)} />
+      <ModernInput label="From" value={flight.from} onChange={(value) => onUpdate(flight.id, 'from', value)} placeholder="BOM" />
+      <ModernInput label="To" value={flight.to} onChange={(value) => onUpdate(flight.id, 'to', value)} placeholder="SIN" />
+      <ModernInput label="Departure" type="time" value={flight.departureTime} onChange={(value) => onUpdate(flight.id, 'departureTime', value)} />
+      <ModernInput label="Arrival" type="time" value={flight.arrivalTime} onChange={(value) => onUpdate(flight.id, 'arrivalTime', value)} />
+    </div>
+  </div>
+));
+
+FlightCard.displayName = 'FlightCard';
+
+const HotelCard = memo(({ hotel, onRemove, onUpdate }) => (
+  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-white/50 mb-4">
+    <div className="flex justify-between items-start mb-4">
+      <h4 className="font-bold text-gray-800 text-lg">{hotel.name}</h4>
+      <button onClick={() => onRemove(hotel.id)} className="text-red-500 hover:text-red-700 transition-colors p-2 rounded-xl hover:bg-red-50">
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <ModernInput label="Hotel Name" value={hotel.name} onChange={(value) => onUpdate(hotel.id, 'name', value)} />
+      <ModernInput label="City" value={hotel.city} onChange={(value) => onUpdate(hotel.id, 'city', value)} />
+      <ModernInput label="Room Type" value={hotel.roomType} onChange={(value) => onUpdate(hotel.id, 'roomType', value)} />
+      <ModernInput label="Check In" type="date" value={hotel.checkIn} onChange={(value) => onUpdate(hotel.id, 'checkIn', value)} />
+      <ModernInput label="Check Out" type="date" value={hotel.checkOut} onChange={(value) => onUpdate(hotel.id, 'checkOut', value)} />
+      <ModernInput label="Nights" type="number" value={hotel.nights} onChange={(value) => onUpdate(hotel.id, 'nights', value)} />
+    </div>
+  </div>
+));
+
+HotelCard.displayName = 'HotelCard';
 
 export default function ItineraryBuilder() {
-  // --- STATE MANAGEMENT ---
   const [formData, setFormData] = useState({
-    customerName: "Rahul Sharma",
-    duration: "4 Days 3 Nights",
-    departureCity: "Mumbai",
-    arrivalCity: "Singapore",
-    departureDate: "2025-10-31",
-    returnDate: "2025-11-03",
-    travelers: "4",
-    totalCost: "₹9,80,000 For 2 Pax (Excl. Gst 5%)",
-    tcsStatus: "Not Collected",
+    customerName: "",
+    duration: "",
+    departureCity: "",
+    arrivalCity: "",
+    departureDate: "",
+    returnDate: "",
+    travelers: "",
+    totalCost: "",
+    tcsStatus: "",
   });
 
-  const [days, setDays] = useState([
-    {
-      id: 1,
-      date: "2025-10-31",
-      title: "Arrival In Singapore & City Exploration",
-      activities: `Morning:\n- Arrive in Singapore. Transfer From Airport To Hotel.\nAfternoon:\n- Check Into Your Hotel.\n- Visit Marina Bay Sands Sky Park (2-3 Hours).\nEvening:\n- Explore Gardens By The Bay (3-4 Hours).`,
-      imagePreview: "https://images.unsplash.com/photo-1542152341-2679698d575c?w=400",
-    },
-    {
-      id: 2,
-      date: "2025-11-01",
-      title: "Singapore City Excursion",
-      activities: `Morning:\n- Breakfast at hotel\n- Full day Universal Studios adventure\n- Lunch at themed restaurants\nEvening:\n- Return to hotel\n- Dinner at local restaurant`,
-      imagePreview: "https://images.unsplash.com/photo-1505995433366-e12047f3d143?w=400",
-    },
-  ]);
+  const [days, setDays] = useState([]);
 
-  const [flights, setFlights] = useState([
-    {
-      id: 1,
-      date: "2025-10-31",
-      airline: "Singapore Airlines (SQ-421)",
-      from: "BOM",
-      to: "SIN",
-      departureTime: "08:00",
-      arrivalTime: "14:30"
-    },
-  ]);
+  const [flights, setFlights] = useState([]);
 
-  const [hotels, setHotels] = useState([
-    {
-      id: 1,
-      name: "Marina Bay Sands",
-      city: "Singapore",
-      checkIn: "2025-10-31",
-      checkOut: "2025-11-03",
-      nights: "3",
-      roomType: "Deluxe Room"
-    },
-  ]);
+  const [hotels, setHotels] = useState([]);
 
-  const [importantNotes, setImportantNotes] = useState([
-    {
-      id: 1,
-      point: "Airlines Standard Policy",
-      details: "In Case Of Visa Rejection, Visa Fees Or Any Other Non Cancellable Component Cannot Be Reimbursed At Any Cost.",
-    },
-  ]);
+  const [importantNotes, setImportantNotes] = useState([]);
 
-  const [scopeServices, setScopeServices] = useState([
-    {
-      id: 1,
-      service: "Flight Tickets And Hotel Vouchers",
-      details: "Delivered 3 Days Post Full Payment",
-    },
-  ]);
+  const [scopeServices, setScopeServices] = useState([]);
 
-  const [inclusionSummary, setInclusionSummary] = useState([
-    {
-      id: 1,
-      category: "Flight",
-      count: "2",
-      details: "All Flights Mentioned",
-      status: "Confirmed",
-    },
-  ]);
+  const [inclusionSummary, setInclusionSummary] = useState([]);
 
-  const [activities, setActivities] = useState([
-    {
-      id: 1,
-      city: "Singapore",
-      activity: "Gardens By The Bay",
-      type: "Leisure",
-      timeRequired: "4 hours",
-      price: "Included",
-    },
-  ]);
+  const [activities, setActivities] = useState([]);
 
-  const [payments, setPayments] = useState([
-    {
-      id: 1,
-      installment: "Advance Payment",
-      amount: "₹60,000",
-      dueDate: "2025-05-15",
-      status: "Paid"
-    },
-  ]);
+  const [payments, setPayments] = useState([]);
 
   const [visaDetails, setVisaDetails] = useState({
-    type: "E-Visa",
-    validity: "3 Months",
-    processingDate: "2025-05-15",
-    status: "Processing"
+    type: "",
+    validity: "",
+    processingDate: "",
+    status: ""
   });
 
   const [activeSection, setActiveSection] = useState('overview');
 
-  // --- HANDLER FUNCTIONS ---
-  const updateFormData = (field, value) => 
+  const updateFormData = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  }, []);
 
-  const addDay = () => 
-    setDays([...days, { 
+  const addDay = useCallback(() => {
+    setDays(prev => [...prev, { 
       id: Date.now(), 
       date: "", 
       title: "", 
       activities: "", 
       imagePreview: null 
     }]);
+  }, []);
 
-  const removeDay = (id) => 
-    days.length > 1 && setDays(days.filter(day => day.id !== id));
+  const removeDay = useCallback((id) => {
+    setDays(prev => prev.length > 1 ? prev.filter(day => day.id !== id) : prev);
+  }, []);
 
-  const updateDay = (id, field, value) => 
-    setDays(days.map(day => day.id === id ? { ...day, [field]: value } : day));
+  const updateDay = useCallback((id, field, value) => {
+    setDays(prev => prev.map(day => day.id === id ? { ...day, [field]: value } : day));
+  }, []);
 
-  const handleImageUpload = (id, e) => {
+  const handleImageUpload = useCallback((id, e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => updateDay(id, "imagePreview", reader.result);
       reader.readAsDataURL(file);
     }
-  };
+  }, [updateDay]);
 
-  const addFlight = () => 
-    setFlights([...flights, { 
+  const addFlight = useCallback(() => {
+    setFlights(prev => [...prev, { 
       id: Date.now(), 
       date: "", 
       airline: "", 
@@ -1051,15 +1133,18 @@ export default function ItineraryBuilder() {
       departureTime: "",
       arrivalTime: ""
     }]);
+  }, []);
 
-  const removeFlight = (id) => 
-    flights.length > 1 && setFlights(flights.filter(f => f.id !== id));
+  const removeFlight = useCallback((id) => {
+    setFlights(prev => prev.length > 1 ? prev.filter(f => f.id !== id) : prev);
+  }, []);
 
-  const updateFlight = (id, field, value) => 
-    setFlights(flights.map(f => f.id === id ? { ...f, [field]: value } : f));
+  const updateFlight = useCallback((id, field, value) => {
+    setFlights(prev => prev.map(f => f.id === id ? { ...f, [field]: value } : f));
+  }, []);
 
-  const addHotel = () => 
-    setHotels([...hotels, {
+  const addHotel = useCallback(() => {
+    setHotels(prev => [...prev, {
       id: Date.now(),
       name: "",
       city: "",
@@ -1068,48 +1153,60 @@ export default function ItineraryBuilder() {
       nights: "",
       roomType: ""
     }]);
+  }, []);
 
-  const removeHotel = (id) => 
-    hotels.length > 1 && setHotels(hotels.filter(h => h.id !== id));
+  const removeHotel = useCallback((id) => {
+    setHotels(prev => prev.length > 1 ? prev.filter(h => h.id !== id) : prev);
+  }, []);
 
-  const updateHotel = (id, field, value) => 
-    setHotels(hotels.map(h => h.id === id ? { ...h, [field]: value } : h));
+  const updateHotel = useCallback((id, field, value) => {
+    setHotels(prev => prev.map(h => h.id === id ? { ...h, [field]: value } : h));
+  }, []);
 
-  const addImportantNote = () => 
-    setImportantNotes([...importantNotes, { id: Date.now(), point: "", details: "" }]);
+  const addImportantNote = useCallback(() => {
+    setImportantNotes(prev => [...prev, { id: Date.now(), point: "", details: "" }]);
+  }, []);
 
-  const removeImportantNote = (id) => 
-    importantNotes.length > 1 && setImportantNotes(importantNotes.filter(n => n.id !== id));
+  const removeImportantNote = useCallback((id) => {
+    setImportantNotes(prev => prev.length > 1 ? prev.filter(n => n.id !== id) : prev);
+  }, []);
 
-  const updateImportantNote = (id, field, value) => 
-    setImportantNotes(importantNotes.map(n => n.id === id ? { ...n, [field]: value } : n));
+  const updateImportantNote = useCallback((id, field, value) => {
+    setImportantNotes(prev => prev.map(n => n.id === id ? { ...n, [field]: value } : n));
+  }, []);
 
-  const addScopeService = () => 
-    setScopeServices([...scopeServices, { id: Date.now(), service: "", details: "" }]);
+  const addScopeService = useCallback(() => {
+    setScopeServices(prev => [...prev, { id: Date.now(), service: "", details: "" }]);
+  }, []);
 
-  const removeScopeService = (id) => 
-    scopeServices.length > 1 && setScopeServices(scopeServices.filter(s => s.id !== id));
+  const removeScopeService = useCallback((id) => {
+    setScopeServices(prev => prev.length > 1 ? prev.filter(s => s.id !== id) : prev);
+  }, []);
 
-  const updateScopeService = (id, field, value) => 
-    setScopeServices(scopeServices.map(s => s.id === id ? { ...s, [field]: value } : s));
+  const updateScopeService = useCallback((id, field, value) => {
+    setScopeServices(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
+  }, []);
 
-  const addInclusion = () => 
-    setInclusionSummary([...inclusionSummary, { 
+  const addInclusion = useCallback(() => {
+    setInclusionSummary(prev => [...prev, { 
       id: Date.now(), 
       category: "", 
       count: "", 
       details: "", 
       status: "" 
     }]);
+  }, []);
 
-  const removeInclusion = (id) => 
-    inclusionSummary.length > 1 && setInclusionSummary(inclusionSummary.filter(i => i.id !== id));
+  const removeInclusion = useCallback((id) => {
+    setInclusionSummary(prev => prev.length > 1 ? prev.filter(i => i.id !== id) : prev);
+  }, []);
 
-  const updateInclusion = (id, field, value) => 
-    setInclusionSummary(inclusionSummary.map(i => i.id === id ? { ...i, [field]: value } : i));
+  const updateInclusion = useCallback((id, field, value) => {
+    setInclusionSummary(prev => prev.map(i => i.id === id ? { ...i, [field]: value } : i));
+  }, []);
 
-  const addActivity = () => 
-    setActivities([...activities, { 
+  const addActivity = useCallback(() => {
+    setActivities(prev => [...prev, { 
       id: Date.now(), 
       city: "", 
       activity: "", 
@@ -1117,32 +1214,39 @@ export default function ItineraryBuilder() {
       timeRequired: "",
       price: ""
     }]);
+  }, []);
 
-  const removeActivity = (id) => 
-    activities.length > 1 && setActivities(activities.filter(a => a.id !== id));
+  const removeActivity = useCallback((id) => {
+    setActivities(prev => prev.length > 1 ? prev.filter(a => a.id !== id) : prev);
+  }, []);
 
-  const updateActivity = (id, field, value) => 
-    setActivities(activities.map(a => a.id === id ? { ...a, [field]: value } : a));
+  const updateActivity = useCallback((id, field, value) => {
+    setActivities(prev => prev.map(a => a.id === id ? { ...a, [field]: value } : a));
+  }, []);
 
-  const addPayment = () => 
-    setPayments([...payments, { 
+  const addPayment = useCallback(() => {
+    setPayments(prev => [...prev, { 
       id: Date.now(), 
       installment: "", 
       amount: "", 
       dueDate: "",
       status: ""
     }]);
+  }, []);
 
-  const removePayment = (id) => 
-    payments.length > 1 && setPayments(payments.filter(p => p.id !== id));
+  const removePayment = useCallback((id) => {
+    setPayments(prev => prev.length > 1 ? prev.filter(p => p.id !== id) : prev);
+  }, []);
 
-  const updatePayment = (id, field, value) => 
-    setPayments(payments.map(p => p.id === id ? { ...p, [field]: value } : p));
+  const updatePayment = useCallback((id, field, value) => {
+    setPayments(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
+  }, []);
 
-  const updateVisaDetails = (field, value) => 
+  const updateVisaDetails = useCallback((field, value) => {
     setVisaDetails(prev => ({ ...prev, [field]: value }));
+  }, []);
 
-  const generatePDF = async () => {
+  const generatePDF = useCallback(async () => {
     try {
       const blob = await pdf(
         <MyDocument
@@ -1171,19 +1275,17 @@ export default function ItineraryBuilder() {
       console.error('Error generating PDF:', error);
       alert('Error generating PDF. Please try again.');
     }
-  };
+  }, [formData, days, flights, hotels, importantNotes, scopeServices, inclusionSummary, activities, payments, visaDetails]);
 
-  // Floating Background Animation
-  const FloatingBackground = () => (
+  const FloatingBackground = useCallback(() => (
     <div className="fixed inset-0 -z-10 overflow-hidden">
       <div className="absolute -top-40 -right-32 w-80 h-80 bg-[#5A11BF] rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-float"></div>
       <div className="absolute -bottom-40 -left-32 w-80 h-80 bg-[#FF6B95] rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-float-delayed"></div>
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#4F46E5] rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow"></div>
     </div>
-  );
+  ), []);
 
-  // Navigation Tabs
-  const NavigationTabs = () => (
+  const NavigationTabs = useCallback(() => (
     <div className="flex overflow-x-auto py-4 gap-2 mb-8 scrollbar-hide">
       {[
         { id: 'overview', icon: Layout, label: 'Overview' },
@@ -1208,69 +1310,9 @@ export default function ItineraryBuilder() {
         </button>
       ))}
     </div>
-  );
+  ), [activeSection]);
 
-  // Animated Card Component
-  const AnimatedCard = ({ icon: Icon, title, children, className = "", delay = 0 }) => (
-    <div 
-      className={`bg-white/80 backdrop-blur-lg rounded-3xl border border-white/20 shadow-2xl shadow-black/5 overflow-hidden hover:shadow-3xl hover:shadow-[#5A11BF]/10 transition-all duration-500 hover:-translate-y-2 ${className}`}
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div className="bg-gradient-to-r from-[#5A11BF] to-[#8B5CF6] p-6">
-        <div className="flex items-center gap-4">
-          <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-sm">
-            <Icon className="w-7 h-7 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-white">{title}</h2>
-        </div>
-      </div>
-      <div className="p-6 bg-white/50 backdrop-blur-sm">
-        {children}
-      </div>
-    </div>
-  );
-
-  // Modern Input Field
-  const ModernInput = ({ label, type = "text", value, onChange, placeholder, icon: Icon }) => (
-    <div className="group space-y-3">
-      <label className="block text-sm font-semibold text-gray-700 tracking-wide">{label}</label>
-      <div className="relative">
-        {Icon && (
-          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#5A11BF] group-focus-within:text-[#8B5CF6] transition-colors">
-            <Icon className="w-5 h-5" />
-          </div>
-        )}
-        <input
-          type={type}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          className={`w-full px-4 py-4 ${Icon ? 'pl-12' : 'pl-4'} bg-white/80 border-2 border-gray-200 rounded-2xl focus:border-[#5A11BF] focus:ring-4 focus:ring-[#5A11BF]/20 transition-all duration-300 backdrop-blur-sm font-medium`}
-        />
-      </div>
-    </div>
-  );
-
-  // Glass Button
-  const GlassButton = ({ onClick, children, variant = "primary", className = "", icon: Icon }) => (
-    <button
-      onClick={onClick}
-      className={`
-        group relative overflow-hidden px-6 py-4 rounded-2xl font-semibold transition-all duration-500 flex items-center gap-3
-        ${variant === 'primary' 
-          ? 'bg-gradient-to-r from-[#5A11BF] to-[#8B5CF6] text-white shadow-2xl shadow-[#5A11BF]/25 hover:shadow-3xl hover:shadow-[#5A11BF]/40 hover:scale-105' 
-          : 'bg-white/80 text-[#5A11BF] border-2 border-[#5A11BF]/20 hover:bg-[#5A11BF] hover:text-white hover:border-[#5A11BF] backdrop-blur-sm'
-        } ${className}
-      `}
-    >
-      {Icon && <Icon className="w-5 h-5 transition-transform group-hover:scale-110" />}
-      {children}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 transform translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
-    </button>
-  );
-
-  // Trip Overview Hero
-  const TripOverview = () => (
+  const TripOverview = useCallback(() => (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
       <AnimatedCard icon={Globe} title="Destination" className="lg:col-span-2" delay={100}>
         <div className="grid grid-cols-2 gap-6">
@@ -1285,27 +1327,27 @@ export default function ItineraryBuilder() {
           <ModernInput 
             label="Departure City" 
             value={formData.departureCity} 
-            onChange={(e) => updateFormData('departureCity', e.target.value)} 
+            onChange={(value) => updateFormData('departureCity', value)} 
             icon={MapPin} 
           />
           <ModernInput 
             label="Destination City" 
             value={formData.arrivalCity} 
-            onChange={(e) => updateFormData('arrivalCity', e.target.value)} 
+            onChange={(value) => updateFormData('arrivalCity', value)} 
             icon={Flag} 
           />
           <ModernInput 
             label="Departure Date" 
             type="date" 
             value={formData.departureDate} 
-            onChange={(e) => updateFormData('departureDate', e.target.value)} 
+            onChange={(value) => updateFormData('departureDate', value)} 
             icon={Calendar}
           />
           <ModernInput 
             label="Return Date" 
             type="date" 
             value={formData.returnDate} 
-            onChange={(e) => updateFormData('returnDate', e.target.value)} 
+            onChange={(value) => updateFormData('returnDate', value)} 
             icon={Calendar}
           />
         </div>
@@ -1330,132 +1372,18 @@ export default function ItineraryBuilder() {
           <ModernInput 
             label="Customer Name" 
             value={formData.customerName} 
-            onChange={(e) => updateFormData('customerName', e.target.value)} 
+            onChange={(value) => updateFormData('customerName', value)} 
             icon={User}
           />
         </div>
       </AnimatedCard>
     </div>
-  );
-
-  // Enhanced Day Itinerary
-  const DayItinerary = ({ day, index }) => (
-    <div className="bg-gradient-to-br from-white to-gray-50/80 rounded-3xl border-2 border-white/50 shadow-2xl shadow-black/5 p-6 mb-6 hover:shadow-3xl hover:shadow-[#5A11BF]/10 transition-all duration-500 group">
-      <div className="flex items-start justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <div className="bg-gradient-to-r from-[#5A11BF] to-[#8B5CF6] text-white px-4 py-2 rounded-2xl font-bold text-lg shadow-lg">
-            Day {index + 1}
-          </div>
-          <div className="bg-[#5A11BF]/10 text-[#5A11BF] px-3 py-1 rounded-full text-sm font-semibold">
-            {new Date(day.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </div>
-        </div>
-        {days.length > 1 && (
-          <button onClick={() => removeDay(day.id)} className="text-red-500 hover:text-red-700 transition-colors p-2 rounded-2xl hover:bg-red-50">
-            <Trash2 className="w-5 h-5" />
-          </button>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <ModernInput 
-            label="Day Title" 
-            value={day.title} 
-            onChange={(e) => updateDay(day.id, 'title', e.target.value)}
-            placeholder="Enter day title..."
-          />
-          
-          <div className="space-y-3">
-            <label className="block text-sm font-semibold text-gray-700">Activities Schedule</label>
-            <textarea 
-              value={day.activities}
-              onChange={(e) => updateDay(day.id, 'activities', e.target.value)}
-              rows={6}
-              className="w-full px-4 py-4 bg-white/80 border-2 border-gray-200 rounded-2xl focus:border-[#5A11BF] focus:ring-4 focus:ring-[#5A11BF]/20 transition-all duration-300 backdrop-blur-sm font-medium resize-none"
-              placeholder="Morning:&#10;- Activity 1&#10;Afternoon:&#10;- Activity 2&#10;Evening:&#10;- Activity 3"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <ModernInput 
-            label="Date" 
-            type="date" 
-            value={day.date} 
-            onChange={(e) => updateDay(day.id, 'date', e.target.value)}
-            icon={Calendar}
-          />
-          
-          <div className="text-center">
-            <label className="block text-sm font-semibold text-gray-700 mb-4">Day Image</label>
-            <label className="cursor-pointer group">
-              <div className={`border-2 border-dashed rounded-2xl p-6 transition-all duration-300 group-hover:border-[#5A11BF] group-hover:bg-[#5A11BF]/5 ${day.imagePreview ? 'border-green-200 bg-green-50' : 'border-gray-300'}`}>
-                {day.imagePreview ? (
-                  <div className="relative">
-                    <img src={day.imagePreview} alt="Preview" className="w-full h-32 object-cover rounded-xl mb-3" />
-                    <div className="text-green-600 text-sm font-semibold">✓ Image Uploaded</div>
-                  </div>
-                ) : (
-                  <div className="text-gray-400 group-hover:text-[#5A11BF] transition-colors">
-                    <Upload className="w-8 h-8 mx-auto mb-2" />
-                    <div className="text-sm">Click to upload image</div>
-                  </div>
-                )}
-                <input type="file" accept="image/*" onChange={(e) => handleImageUpload(day.id, e)} className="hidden" />
-              </div>
-            </label>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Flight Card Component
-  const FlightCard = ({ flight }) => (
-    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-6 border-2 border-white/50 mb-4">
-      <div className="flex justify-between items-start mb-4">
-        <h4 className="font-bold text-gray-800 text-lg">{flight.airline}</h4>
-        <button onClick={() => removeFlight(flight.id)} className="text-red-500 hover:text-red-700 transition-colors p-2 rounded-xl hover:bg-red-50">
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <ModernInput label="Date" type="date" value={flight.date} onChange={(e) => updateFlight(flight.id, 'date', e.target.value)} />
-        <ModernInput label="Airline" value={flight.airline} onChange={(e) => updateFlight(flight.id, 'airline', e.target.value)} />
-        <ModernInput label="From" value={flight.from} onChange={(e) => updateFlight(flight.id, 'from', e.target.value)} placeholder="BOM" />
-        <ModernInput label="To" value={flight.to} onChange={(e) => updateFlight(flight.id, 'to', e.target.value)} placeholder="SIN" />
-        <ModernInput label="Departure" type="time" value={flight.departureTime} onChange={(e) => updateFlight(flight.id, 'departureTime', e.target.value)} />
-        <ModernInput label="Arrival" type="time" value={flight.arrivalTime} onChange={(e) => updateFlight(flight.id, 'arrivalTime', e.target.value)} />
-      </div>
-    </div>
-  );
-
-  // Hotel Card Component
-  const HotelCard = ({ hotel }) => (
-    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border-2 border-white/50 mb-4">
-      <div className="flex justify-between items-start mb-4">
-        <h4 className="font-bold text-gray-800 text-lg">{hotel.name}</h4>
-        <button onClick={() => removeHotel(hotel.id)} className="text-red-500 hover:text-red-700 transition-colors p-2 rounded-xl hover:bg-red-50">
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <ModernInput label="Hotel Name" value={hotel.name} onChange={(e) => updateHotel(hotel.id, 'name', e.target.value)} />
-        <ModernInput label="City" value={hotel.city} onChange={(e) => updateHotel(hotel.id, 'city', e.target.value)} />
-        <ModernInput label="Room Type" value={hotel.roomType} onChange={(e) => updateHotel(hotel.id, 'roomType', e.target.value)} />
-        <ModernInput label="Check In" type="date" value={hotel.checkIn} onChange={(e) => updateHotel(hotel.id, 'checkIn', e.target.value)} />
-        <ModernInput label="Check Out" type="date" value={hotel.checkOut} onChange={(e) => updateHotel(hotel.id, 'checkOut', e.target.value)} />
-        <ModernInput label="Nights" type="number" value={hotel.nights} onChange={(e) => updateHotel(hotel.id, 'nights', e.target.value)} />
-      </div>
-    </div>
-  );
+  ), [formData, updateFormData]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 relative overflow-hidden">
       <FloatingBackground />
       
-      {/* Animated Header */}
       <div className="relative z-10">
         <div className="text-center py-12">
           <div className="flex items-center justify-center gap-4 mb-6">
@@ -1470,14 +1398,20 @@ export default function ItineraryBuilder() {
           <NavigationTabs />
           
           <div className="space-y-8">
-            {/* Trip Overview */}
             <TripOverview />
 
-            {/* Daily Itinerary */}
             <AnimatedCard icon={Calendar} title="Daily Itinerary" delay={300}>
               <div className="space-y-6">
                 {days.map((day, index) => (
-                  <DayItinerary key={day.id} day={day} index={index} />
+                  <DayItinerary 
+                    key={day.id} 
+                    day={day} 
+                    index={index} 
+                    onRemove={removeDay}
+                    onUpdate={updateDay}
+                    onImageUpload={handleImageUpload}
+                    daysLength={days.length}
+                  />
                 ))}
                 <GlassButton onClick={addDay} icon={Plus} className="w-full justify-center py-6 text-lg">
                   Add New Day
@@ -1485,12 +1419,16 @@ export default function ItineraryBuilder() {
               </div>
             </AnimatedCard>
 
-            {/* Flights & Hotels Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <AnimatedCard icon={Plane} title="Flight Details" delay={400}>
                 <div className="space-y-6">
                   {flights.map((flight) => (
-                    <FlightCard key={flight.id} flight={flight} />
+                    <FlightCard 
+                      key={flight.id} 
+                      flight={flight} 
+                      onRemove={removeFlight}
+                      onUpdate={updateFlight}
+                    />
                   ))}
                   <GlassButton onClick={addFlight} variant="secondary" icon={Plus} className="w-full justify-center">
                     Add Flight
@@ -1501,7 +1439,12 @@ export default function ItineraryBuilder() {
               <AnimatedCard icon={Hotel} title="Hotel Stays" delay={500}>
                 <div className="space-y-6">
                   {hotels.map((hotel) => (
-                    <HotelCard key={hotel.id} hotel={hotel} />
+                    <HotelCard 
+                      key={hotel.id} 
+                      hotel={hotel} 
+                      onRemove={removeHotel}
+                      onUpdate={updateHotel}
+                    />
                   ))}
                   <GlassButton onClick={addHotel} variant="secondary" icon={Plus} className="w-full justify-center">
                     Add Hotel
@@ -1510,7 +1453,6 @@ export default function ItineraryBuilder() {
               </AnimatedCard>
             </div>
 
-            {/* Activities Section */}
             <AnimatedCard icon={MapPin} title="Activities & Experiences" delay={600}>
               <div className="space-y-6">
                 {activities.map((activity) => (
@@ -1522,10 +1464,10 @@ export default function ItineraryBuilder() {
                       </button>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <ModernInput label="City" value={activity.city} onChange={(e) => updateActivity(activity.id, 'city', e.target.value)} />
-                      <ModernInput label="Activity" value={activity.activity} onChange={(e) => updateActivity(activity.id, 'activity', e.target.value)} />
-                      <ModernInput label="Type" value={activity.type} onChange={(e) => updateActivity(activity.id, 'type', e.target.value)} />
-                      <ModernInput label="Duration" value={activity.timeRequired} onChange={(e) => updateActivity(activity.id, 'timeRequired', e.target.value)} />
+                      <ModernInput label="City" value={activity.city} onChange={(value) => updateActivity(activity.id, 'city', value)} />
+                      <ModernInput label="Activity" value={activity.activity} onChange={(value) => updateActivity(activity.id, 'activity', value)} />
+                      <ModernInput label="Type" value={activity.type} onChange={(value) => updateActivity(activity.id, 'type', value)} />
+                      <ModernInput label="Duration" value={activity.timeRequired} onChange={(value) => updateActivity(activity.id, 'timeRequired', value)} />
                     </div>
                   </div>
                 ))}
@@ -1535,7 +1477,6 @@ export default function ItineraryBuilder() {
               </div>
             </AnimatedCard>
 
-            {/* Payments Section */}
             <AnimatedCard icon={CreditCard} title="Payment Schedule" delay={700}>
               <div className="space-y-6">
                 {payments.map((payment) => (
@@ -1547,10 +1488,10 @@ export default function ItineraryBuilder() {
                       </button>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <ModernInput label="Installment" value={payment.installment} onChange={(e) => updatePayment(payment.id, 'installment', e.target.value)} />
-                      <ModernInput label="Amount" value={payment.amount} onChange={(e) => updatePayment(payment.id, 'amount', e.target.value)} />
-                      <ModernInput label="Due Date" type="date" value={payment.dueDate} onChange={(e) => updatePayment(payment.id, 'dueDate', e.target.value)} />
-                      <ModernInput label="Status" value={payment.status} onChange={(e) => updatePayment(payment.id, 'status', e.target.value)} />
+                      <ModernInput label="Installment" value={payment.installment} onChange={(value) => updatePayment(payment.id, 'installment', value)} />
+                      <ModernInput label="Amount" value={payment.amount} onChange={(value) => updatePayment(payment.id, 'amount', value)} />
+                      <ModernInput label="Due Date" type="date" value={payment.dueDate} onChange={(value) => updatePayment(payment.id, 'dueDate', value)} />
+                      <ModernInput label="Status" value={payment.status} onChange={(value) => updatePayment(payment.id, 'status', value)} />
                     </div>
                   </div>
                 ))}
@@ -1560,7 +1501,6 @@ export default function ItineraryBuilder() {
               </div>
             </AnimatedCard>
 
-            {/* Generate PDF Section */}
             <div className="text-center py-12">
               <div className="bg-gradient-to-r flex flex-col items-center from-[#5A11BF] to-[#8B5CF6] rounded-3xl p-8 shadow-2xl shadow-[#5A11BF]/25">
                 <h3 className="text-3xl font-bold text-white mb-4">Your Journey Awaits! </h3>
@@ -1578,7 +1518,6 @@ export default function ItineraryBuilder() {
         </div>
       </div>
 
-      {/* Add these animations to your CSS */}
       <style jsx>{`
         @keyframes float {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
